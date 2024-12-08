@@ -14,15 +14,24 @@ public:
     }
 
     /**
+     * @brief  The ngrams to include when processing text.
+     *
+     * It is recommended to initialize what ngrams to record before processing
+     * text.
+     */
+    void include_ngram(const int n);
+
+    /** @brief  The ngrams to exclude when procesing text. */
+    void exclude_ngram(const int n);
+
+    /**
      * @brief  Processes the given text into useful statistics.
      *
      * Only words containing at least two alpha characters are processed.
      *
-     * Stop words will not be processed for ngram statistics. These
-     * include the top 50 words from the AP89 dataset and words that are one
-     * alpha character long.
-     *
-     * ``update()`` should be called after all processings are completed.
+     * Stop words will not be processed for ngram statistics. These include the
+     * top 50 words from the AP89 dataset and words that are one alpha character
+     * long.
      *
      * @param text    The text to process.
      *
@@ -30,18 +39,16 @@ public:
      *                then the previous dataset will be cleared. Defaults to
      *                true.
      */
-    void process(std::string text, const bool append = true);
+    void process(std::string& text, const bool append = true);
 
     /**
      * @brief  Processes the given file into useful statistics.
      *
      * Only words containing at least two alpha characters are processed.
      *
-     * Stop words will not be processed for ngram statistics. These
-     * include the top 50 words from the AP89 dataset and words that are one
-     * alpha character long.
-     *
-     * ``update()`` should be called after all processings are completed.
+     * Stop words will not be processed for ngram statistics. These include the
+     * top 50 words from the AP89 dataset and words that are one alpha character
+     * long.
      *
      * @param filename  The name of the file to process.
      *
@@ -53,11 +60,8 @@ public:
      */
     bool process_file(const std::string& filename, const bool append = true);
 
-    /** @brief  Updates all the statistics the processor has collected. */
-    void update();
-
     /** @brief  Clears all the statistics the processor has collected. */
-    void clear();
+    void clear_stats();
 
     /** @brief  The number of texts that were processed. */
     int num_processed() const
@@ -65,28 +69,11 @@ public:
         return m_num_processed;
     }
 
-    /**
-     * @brief  Gets the number of valid words.
-     *
-     * @param unique  If the statistic is for unique words. Defaults to false.
-     */
-    int num_words(const bool unique = false) const;
+    /** @brief  Gets the number of words that has been processed. */
+    int num_words() const;
 
-    /**
-     * @brief  Gets the number of bigrams.
-     *
-     * @param unique  If the statistic is for unique bigrams. Defaults to
-     *                false.
-     */
-    int num_bigrams(const bool unique = false) const;
-
-    /**
-     * @brief  Gets the number of trigrams.
-     *
-     * @param unique  If the statistic is for unique trigrams. Defaults to
-     *                false.
-     */
-    int num_trigrams(const bool unique = false) const;
+    /** @brief  Gets the number of unique words that has been processed. */
+    int num_unique_words() const;
 
     /**
      * @brief  Gets the top list of frequent words.
@@ -94,39 +81,34 @@ public:
      * The list is sorted first by highest frequency and then alphabetically.
      *
      * @param n  The number of words to return. If this is negative, then all
-     *           of the words in the dataset will be returned.
+     *           of the words in the dataset will be returned. Defaults to -1.
      */
-    std::vector<FrequencyPair> word_frequency(int n = -1) const;
+    std::vector<FrequencyPair> word_frequency(const int n = -1);
+
+    /** @brief  Gets the number of ngrams that has been processed. */
+    int num_ngrams(const int n) const;
+
+    /** @brief  Gets the number of unique ngrams that has been processed. */
+    int num_unique_ngrams(const int n) const;
 
     /**
-     * @brief  Gets the top list of frequent bigrams.
+     * @brief  Gets the top list of frequent ngrams.
      *
      * The list is sorted first by highest frequency and then alphabetically.
      *
-     * @param n  The number of bigrams to return. If this is negative, then all
-     *           of the bigrams in the dataset will be returned.
+     * @param n  The number of ngrams to return. If this is negative, then all
+     *           of the ngrams in the dataset will be returned. Defaults to -1.
      */
-    std::vector<FrequencyPair> bigram_frequency(int n = -1) const;
-
-    /**
-     * @brief  Gets the top list of frequent trigrams.
-     *
-     * The list is sorted first by highest frequency and then alphabetically.
-     *
-     * @param n  The number of trigrams to return. If this is negative, then
-     *           all of the trigrams in the dataset will be returned.
-     */
-    std::vector<FrequencyPair> trigram_frequency(int n = -1) const;
+    std::vector<FrequencyPair> ngram_frequency(const int n, const int size = -1);
 
 private:
-    /** The words and their frequencies. */
+    /** @brief  Processes all ngrams that can be produced from the word list. */
+    void process_ngrams(const std::vector<std::string>& word_list);
+
+    /** @brief  The words and their frequencies. */
     FrequencyMap m_word_frequency;
 
-    /** The bigrams and their frequencies. */
-    FrequencyMap m_bigram_frequency;
-
-    /** The trigrams and their frequencies. */
-    FrequencyMap m_trigram_frequency;
+    std::unordered_map<int, FrequencyMap> m_ngrams;
 
     /** @brief  The number of texts that were processed. */
     int m_num_processed;

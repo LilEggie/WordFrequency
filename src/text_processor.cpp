@@ -1,7 +1,8 @@
 #include <fstream>
-#include <list>
 #include <sstream>
+#include <string>
 #include <unordered_set>
+#include <vector>
 
 #include "frequency_map.h"
 #include "text_processor.h"
@@ -15,61 +16,77 @@ static std::unordered_set<std::string> STOP_WORDS = {
     "which", "we", "more", "after", "us", "percent", "up", "one", "people"
 };
 
-std::string stringify_ngram(const std::list<std::string> ngram)
+void TextProcessor::include_ngram(const int n)
 {
-    std::string result;
-    for (const auto& s : ngram)
+    if (n <= 1)
     {
-        result += s + " ";
+        return;
     }
-    result.erase(result.length() - 1);
-    return result;
+    if (m_ngrams.find(n) == m_ngrams.end())
+    {
+        m_ngrams[n] = FrequencyMap();
+    }
 }
 
-void TextProcessor::process(std::string text, const bool append)
+void TextProcessor::exclude_ngram(const int n)
+{
+    m_ngrams.erase(n);
+}
+
+void TextProcessor::process_ngrams(const std::vector<std::string>& word_list)
+{
+    int size = word_list.size();
+
+    for (auto& pair : m_ngrams)
+    {
+        int n = pair.first;
+        FrequencyMap& fmap = pair.second;
+
+        for (int i = 0; i <= size - n; ++i)
+        {
+            std::string s;
+            for (int j = 0; j < n; ++j)
+            {
+                s += word_list[i + j] + " ";
+            }
+            s.erase(s.length() - 1);
+            fmap.increment_frequency(s);
+        }
+    }
+}
+
+void TextProcessor::process(std::string& text, const bool append)
 {
     tolower(text);
     if (!append)
     {
-        this->clear();
+        this->clear_stats();
     }
 
-    std::list<std::string> bigram;
-    std::list<std::string> trigram;
+    std::vector<std::string> word_list;
     std::string word;
 
-    while(readtext(text, word))
+    while (readtext(text, word))
     {
         if (word.length() < 2)
         {
-            bigram.clear();
-            trigram.clear();
+            this->process_ngrams(word_list);
+            word_list.clear();
             continue;
         }
 
-        m_word_frequency[word]++;
+        m_word_frequency.increment_frequency(word);
 
         if (STOP_WORDS.find(word) != STOP_WORDS.end())
         {
-            bigram.clear();
-            trigram.clear();
+            this->process_ngrams(word_list);
+            word_list.clear();
             continue;
         }
 
-        bigram.push_back(word);
-        trigram.push_back(word);
-
-        if (bigram.size() == 2)
-        {
-            m_bigram_frequency[stringify_ngram(bigram)]++;
-            bigram.pop_front();
-        }
-        if (trigram.size() == 3)
-        {
-            m_trigram_frequency[stringify_ngram(trigram)]++;
-            trigram.pop_front();
-        }
+        word_list.push_back(word);
     }
+    this->process_ngrams(word_list);
     m_num_processed++;
 }
 
@@ -81,60 +98,58 @@ bool TextProcessor::process_file(const std::string& filename, const bool append)
         return false;
     }
 
-    std::ostringstream ss;
-    ss << file.rdbuf();
-    process(ss.str(), append);
+    std::ostringstream buffer;
+    buffer << file.rdbuf();
+    std::string tmp = buffer.str();
 
-    file.close();
+    this->process(tmp, append);
     return true;
 }
 
-void TextProcessor::update()
+void TextProcessor::clear_stats()
 {
-    m_word_frequency.update();
-    m_bigram_frequency.update();
-    m_trigram_frequency.update();
+    m_word_frequency.clear_contents();
 }
 
-void TextProcessor::clear()
+int TextProcessor::num_words() const
 {
-    m_word_frequency.clear();
-    m_bigram_frequency.clear();
-    m_trigram_frequency.clear();
+    return m_word_frequency.sum_frequency();
 }
 
-int TextProcessor::num_words(const bool unique) const
+int TextProcessor::num_unique_words() const
 {
-    return unique
-           ? m_word_frequency.size()
-           : m_word_frequency.total();
+    return m_word_frequency.num_unique();
 }
 
-int TextProcessor::num_bigrams(const bool unique) const
-{
-    return unique
-           ? m_bigram_frequency.size()
-           : m_bigram_frequency.total();
-}
-
-int TextProcessor::num_trigrams(const bool unique) const
-{
-    return unique
-           ? m_trigram_frequency.size()
-           : m_trigram_frequency.total();
-}
-
-std::vector<FrequencyPair> TextProcessor::word_frequency(int n) const
+std::vector<FrequencyPair> TextProcessor::word_frequency(const int n)
 {
     return m_word_frequency.sorted_data(n);
 }
 
-std::vector<FrequencyPair> TextProcessor::bigram_frequency(int n) const
+int TextProcessor::num_ngrams(const int n) const
 {
-    return m_bigram_frequency.sorted_data(n);
+    if (m_ngrams.find(n) == m_ngrams.end())
+    {
+        return 0;
+    }
+    return m_ngrams.at(n).sum_frequency();
 }
 
-std::vector<FrequencyPair> TextProcessor::trigram_frequency(int n) const
+int TextProcessor::num_unique_ngrams(const int n) const
 {
-    return m_trigram_frequency.sorted_data(n);
+    if (m_ngrams.find(n) == m_ngrams.end())
+    {
+        return 0;
+    }
+    return m_ngrams.at(n).num_unique();
+}
+
+std::vector<FrequencyPair> TextProcessor::ngram_frequency(const int n,
+                                                          const int size)
+{
+    if (m_ngrams.find(n) == m_ngrams.end())
+    {
+        return std::vector<FrequencyPair>();
+    }
+    return m_ngrams.at(n).sorted_data(size);
 }
