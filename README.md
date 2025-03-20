@@ -90,9 +90,9 @@ processor.process_file("resources/lion.txt");
 ### 6. Statistics Output
 `int num_processed()`: Returns the number of processed texts and files the dataset contains.
 
-`int num_words()`: Returns the total number of words in the processed dataset.
+`int num_words()`: Returns the total number of words (1-gram) in the processed dataset.
 
-`int num_unique_words()`: Returns the total number of unique words in the processed dataset.
+`int num_unique_words()`: Returns the total number of unique words (1-gram) in the processed dataset.
 
 `int num_ngrams(const int n)`: Returns the total number of n-grams  of size `n` in the processed dataset.
 - `n`: The n-gram size.
